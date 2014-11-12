@@ -1,0 +1,12 @@
+@(eventForm: Form[Event], games: List[models.Game])
+
+@import helper._
+@import models.Event
+
+@main("Edit Event") {
+  <h1>Edit Event</h1>
+  @form(routes.Events.update(eventForm.get.id)) {
+      @eventformfields(eventForm, games)  
+      <button type="submit">Update</button>
+  }
+}

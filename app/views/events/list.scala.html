@@ -1,0 +1,24 @@
+@(events: Iterable[models.Event])
+
+@main("All events") {
+
+  @timezoneoptions()
+
+  <h2>All events</h2>
+  @if(events.isEmpty) {
+      <p>No events found</p>
+  } else {
+      <ul>
+      @for(event <- events) {
+              <li>@event.title</li>
+              <li>@event.streamLink</li>
+              <li>@event.startTime.toDate().format("yyyy-MM-dd HH:mm")</li>
+              <li>@event.endTime.toDate().format("yyyy-MM-dd HH:mm")</li>
+              <a href="@routes.Events.edit(event.id)">Edit</a>
+              @helper.form(action = routes.Events.delete(event.id)){<button type="submit">Delete</button>}</li>
+              
+      }
+      </ul>
+  }
+  <a href="@routes.Events.add">Add a new Event</a>
+}
