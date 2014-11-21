@@ -9,11 +9,13 @@ import anorm._
 
 import scala.collection.mutable.HashMap
 
+// This class is used to set the timezone
+// Currently implemented using a cookie
 object Timezone extends Controller {
   
   val timezoneform = Form(
     single(
-      "timezone" -> number
+      "timezone" -> number(min = -12, max = 12)
     )
   )
   

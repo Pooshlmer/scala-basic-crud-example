@@ -4,6 +4,7 @@ import org.joda.time._
 import org.joda.time.format._
 import anorm._
 
+// A custom class to support Anorm parsing of Joda DateTime.
 object AnormExtension {
 
 

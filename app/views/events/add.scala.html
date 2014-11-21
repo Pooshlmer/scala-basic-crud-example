@@ -1,4 +1,4 @@
-@(eventForm: Form[Event], games: List[models.Game])
+@(eventForm: Form[Event], eventGames: List[models.EventGame], games: List[models.Game])
 
 @import helper._
 @import models.Event
@@ -6,7 +6,7 @@
 @main("Add a new Event") {
   <h1>Add a new Event</h1>
   @form(routes.Events.save()) {
-      @eventformfields(eventForm, games)
+      @eventformfields(eventForm, eventGames, games)
       <button type="submit">Save</button>
   }
 }

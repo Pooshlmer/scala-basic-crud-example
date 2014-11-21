@@ -9,24 +9,45 @@ import play.api.Play.current
 import play.api.Logger
 import anorm._
 import anorm.SqlParser._
-import models.Event
+import models._
+import mappings.CustomMappings
 
 import org.joda.time.DateTime
 import java.sql.Timestamp
 
 import scala.collection.mutable.HashMap
 
+// Controller class for Events, supports the basic CRUD operations
+
 object Events extends Controller {
   
+  // You can use ignored for things like id where you don't want user interaction
+  // The jodaDate can take a pattern parameter to control how it is displayed/input
   val form = Form(
     mapping(
       "id" -> ignored(0),
       "title" -> nonEmptyText,
       "startTime" -> jodaDate("yyyy/MM/dd HH:mm"),
       "endTime" -> jodaDate("yyyy/MM/dd HH:mm"),
-      "streamLink" -> nonEmptyText
-  )(Event.apply)(Event.unapply))
+      "streamLink" -> nonEmptyText,
+      "games" -> seq(number)
+    )
+    {(id, title, startTime, endTime, streamLink, games) =>
+      {
+        var eventgames = List[EventGame]()
+        for (game <- games) {
+          eventgames = EventGame(0, id, game, EventGame.BOTTOMTIER) :: eventgames
+        }
+        Event(id, title, startTime, endTime, streamLink, eventgames)
+      }
+    }
+    (event => Some(event.id, event.title, event.startTime, event.endTime, event.streamLink, event.games.map(_.game_id)))
+  )
   
+  // Prints out the events running on a particular day
+  // implicit is kind of like defining a global, if a method
+  // needs a request object that is not explicitly passed, it
+  // can use a defined implicit variable
   def day(dayToFind: String) = Action { implicit request =>
     
     val timezone = getTimezone()
@@ -36,13 +57,21 @@ object Events extends Controller {
     val timestamp1 = dateTime.toDate()
     val timestamp2 = dateTime.toDate()
     
+    // You can use $<variable> with the SQL""" syntax to interpolate in the string itself
+    // Interpolate expressions with ${expr}
+    // The parser uses * to get all rows, it then puts them into a list
+    // The as function executes the select with the given parser
+    // Here c is used in the SQL call as the connection
     DB.withConnection { implicit c =>
       val events =  
         SQL"""
-          SELECT * FROM event WHERE start_time >= $timestamp1 AND start_time <= $timestamp2
-        """.as(Event.parser(timezone) *)
+          SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id)
+            WHERE (start_time >= $timestamp1 AND start_time <= $timestamp2) OR
+            (end_time >= $timestamp1 AND end_time <= $timestamp2)
+        """.as(Event.fullparser(timezone) *)
       
-      Ok(views.html.events.day(events))
+      val eventList = Event.convertFullParser(events)
+      Ok(views.html.events.day(eventList))
     }
   }
   
@@ -53,25 +82,31 @@ object Events extends Controller {
     DB.withConnection { implicit c =>
       val events = SQL(
         """
-          SELECT * FROM event
+          SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id)
         """
-      ).as(Event.parser(timezone) *)
+      ).as(Event.fullparser(timezone) *)
 
-      Ok(views.html.events.list(events))
+      val eventList = Event.convertFullParser(events)
+      // This function renders a page, they have to be called <name>.scala.html
+      Ok(views.html.events.list(eventList))
     }
     
   }
   
   def add = Action {
-    Ok(views.html.events.add(form, List()))
+    Ok(views.html.events.add(form, List(), Game.list))
   }
   def save = Action{ implicit request =>
     val event = form.bindFromRequest.get
+    
+    Logger.debug(event.toString())
     
     val timezone = getTimezone()
     
     val timestampstart = event.startTime.minusHours(timezone).toDate()
     val timestampend = event.endTime.minusHours(timezone).toDate()
+    
+    // You can also use on() if you want to define strings yourself
     DB.withConnection { implicit c =>
       val result = SQL(
         """
@@ -80,36 +115,50 @@ object Events extends Controller {
         """
       ).on("title" -> event.title, "streamLink" -> event.streamLink, "startTime" -> timestampstart,
         "endTime" -> timestampend).executeInsert()
+      val insertId = result.get.toInt
+      addGames(insertId, event.games)
     }
     
     Redirect(routes.Events.list)
+  }
+  
+  def addGames(eventId: Int, eventGames: List[EventGame])(implicit c: java.sql.Connection) {
+    for (eventGame <- eventGames) {
+      SQL"""INSERT INTO event_game_xref(event_id, game_id, tier)
+        VALUES($eventId, ${eventGame.game_id}, ${eventGame.tier})""".executeInsert()
+    }
+  }
+  def deleteGames(eventId: Int)(implicit c: java.sql.Connection) {
+    SQL"""DELETE FROM event_game_xref WHERE event_id = $eventId""".execute
   }
 
   def edit(id: Int) = Action { implicit request =>
     
     val timezone = getTimezone()
-    
+     
     DB.withConnection { implicit c =>
       val event = SQL(
         """
-          SELECT * FROM event WHERE id = {id}
+          SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id) WHERE id = {id}
         """
-      ).on("id" -> id).as(Event.parser(timezone).single)
+      ).on("id" -> id).as(Event.fullparser(timezone) *)
 
-      val bindedForm = form.fill(event)
+      val eventList = Event.convertFullParser(event)
+      // This fills the form for viewing when editing an event
+      val bindedForm = form.fill(eventList.head)
       
-      Ok(views.html.events.edit(bindedForm, List()))
+      Ok(views.html.events.edit(bindedForm, eventList.head.games, Game.list))
     }    
   }  
   def update(id: Int) = Action { implicit request =>
+    // This is how to autofill the form defined above
     val event = form.bindFromRequest.get
     
     Logger.debug(event.toString())
     val timezone = getTimezone()
     val timestampstart = event.startTime.minusHours(timezone).toDate()
     val timestampend = event.endTime.minusHours(timezone).toDate()
-    Logger.debug(timestampstart.toString())
-    Logger.debug(timestampend.toString())
+    
     DB.withConnection { implicit c =>
       val result = SQL(
         """
@@ -117,7 +166,9 @@ object Events extends Controller {
           ({title}, {streamLink}, {startTime}, {endTime}) WHERE id = {id}
         """
       ).on("id" -> id, "title" -> event.title, "streamLink" -> event.streamLink, "startTime" -> timestampstart,
-        "endTime" -> timestampend).executeInsert()
+        "endTime" -> timestampend).executeUpdate()
+      deleteGames(id)
+      addGames(id, event.games)
     }
     Redirect(routes.Events.list)
   }
@@ -129,6 +180,7 @@ object Events extends Controller {
           DELETE FROM event WHERE id = {id}
         """
       ).on("id" -> id).execute()
+      deleteGames(id)
     }
     Redirect(routes.Events.list)
   }  

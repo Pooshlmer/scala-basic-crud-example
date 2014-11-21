@@ -1,5 +1,6 @@
 # Routes
 # This file defines all application routes (Higher priority routes first)
+# /URL/(parameters with ':')            <class method>(parameters)
 # ~~~~
 
 # Home page
