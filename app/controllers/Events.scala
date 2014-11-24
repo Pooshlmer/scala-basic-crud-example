@@ -20,6 +20,14 @@ import scala.collection.mutable.HashMap
 
 object Events extends Controller {
   
+  val gamesConstraint = Constraint[Seq[Int]](Some("games.constraint"), Nil)(games =>
+    if (games.isEmpty) {
+      Invalid(ValidationError("Each event must have at least one game"))
+    } else {
+      Valid
+    }
+  )
+  
   // You can use ignored for things like id where you don't want user interaction
   // The jodaDate can take a pattern parameter to control how it is displayed/input
   val form = Form(
@@ -31,7 +39,7 @@ object Events extends Controller {
       "streamLink" -> nonEmptyText,
       // This is a sequence of numbers, passed in as games[]
       // This comment is mainly here to complain that list didn't work
-      "games" -> seq(number)
+      "games" -> seq(number).verifying(gamesConstraint)
     )
     // If you have a straightforward mapping, you can put (<class>.apply)(<class>.unapply) here
     // when using case classes. Otherwise implement your own methods

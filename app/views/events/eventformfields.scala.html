@@ -11,6 +11,11 @@
   <h2>Games at this event</h2>
 </div>
 <div>
+  @if(!eventForm.error("games").isEmpty) {
+    <dl>      
+      <dd class="error">@eventForm.error("games").get.message</dd>
+    </dl>
+  }
   @for(game <- games) {
   <label>
     <input type="checkbox" name="games[]" value="@game.id"
