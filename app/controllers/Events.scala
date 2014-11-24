@@ -10,7 +10,6 @@ import play.api.Logger
 import anorm._
 import anorm.SqlParser._
 import models._
-import mappings.CustomMappings
 
 import org.joda.time.DateTime
 import java.sql.Timestamp
@@ -25,13 +24,17 @@ object Events extends Controller {
   // The jodaDate can take a pattern parameter to control how it is displayed/input
   val form = Form(
     mapping(
-      "id" -> ignored(0),
+      "id" -> number,
       "title" -> nonEmptyText,
       "startTime" -> jodaDate("yyyy/MM/dd HH:mm"),
       "endTime" -> jodaDate("yyyy/MM/dd HH:mm"),
       "streamLink" -> nonEmptyText,
+      // This is a sequence of numbers, passed in as games[]
+      // This comment is mainly here to complain that list didn't work
       "games" -> seq(number)
     )
+    // If you have a straightforward mapping, you can put (<class>.apply)(<class>.unapply) here
+    // when using case classes. Otherwise implement your own methods
     {(id, title, startTime, endTime, streamLink, games) =>
       {
         var eventgames = List[EventGame]()
@@ -47,7 +50,7 @@ object Events extends Controller {
   // Prints out the events running on a particular day
   // implicit is kind of like defining a global, if a method
   // needs a request object that is not explicitly passed, it
-  // can use a defined implicit variable
+  // can use a implicit variable (this is still in the function signature)
   def day(dayToFind: String) = Action { implicit request =>
     
     val timezone = getTimezone()
@@ -97,31 +100,35 @@ object Events extends Controller {
     Ok(views.html.events.add(form, List(), Game.list))
   }
   def save = Action{ implicit request =>
-    val event = form.bindFromRequest.get
-    
-    Logger.debug(event.toString())
-    
-    val timezone = getTimezone()
-    
-    val timestampstart = event.startTime.minusHours(timezone).toDate()
-    val timestampend = event.endTime.minusHours(timezone).toDate()
-    
-    // You can also use on() if you want to define strings yourself
-    DB.withConnection { implicit c =>
-      val result = SQL(
-        """
-          INSERT INTO event(title, stream_link, start_time, end_time) VALUES 
-          ({title}, {streamLink}, {startTime}, {endTime})
-        """
-      ).on("title" -> event.title, "streamLink" -> event.streamLink, "startTime" -> timestampstart,
-        "endTime" -> timestampend).executeInsert()
-      val insertId = result.get.toInt
-      addGames(insertId, event.games)
-    }
-    
-    Redirect(routes.Events.list)
+    form.bindFromRequest.fold(
+      errors => BadRequest(views.html.events.add(errors, List(), Game.list)),
+      event => {
+        //Logger.debug(event.toString())
+        
+        val timezone = getTimezone()
+        
+        val timestampstart = event.startTime.minusHours(timezone).toDate()
+        val timestampend = event.endTime.minusHours(timezone).toDate()
+        
+        // You can also use on() if you want to define strings yourself
+        DB.withConnection { implicit c =>
+          val result = SQL(
+            """
+              INSERT INTO event(title, stream_link, start_time, end_time) VALUES 
+              ({title}, {streamLink}, {startTime}, {endTime})
+            """
+          ).on("title" -> event.title, "streamLink" -> event.streamLink, "startTime" -> timestampstart,
+            "endTime" -> timestampend).executeInsert()
+          val insertId = result.get.toInt
+          addGames(insertId, event.games)
+        }
+        
+        Redirect(routes.Events.list)
+      }
+    )
   }
   
+  // Add or delete the EventGame references when you add or delete an Event
   def addGames(eventId: Int, eventGames: List[EventGame])(implicit c: java.sql.Connection) {
     for (eventGame <- eventGames) {
       SQL"""INSERT INTO event_game_xref(event_id, game_id, tier)
@@ -144,33 +151,49 @@ object Events extends Controller {
       ).on("id" -> id).as(Event.fullparser(timezone) *)
 
       val eventList = Event.convertFullParser(event)
-      // This fills the form for viewing when editing an event
-      val bindedForm = form.fill(eventList.head)
       
-      Ok(views.html.events.edit(bindedForm, eventList.head.games, Game.list))
+      if (eventList.isEmpty) {
+        NotFound(<h1>Event id not found</h1>)
+      } else {
+        // This fills the form for viewing when editing an event
+        val bindedForm = form.fill(eventList.head)
+        Logger.debug(bindedForm.toString())
+        Ok(views.html.events.edit(bindedForm, id, eventList.head.games, Game.list))
+      }
     }    
   }  
   def update(id: Int) = Action { implicit request =>
-    // This is how to autofill the form defined above
-    val event = form.bindFromRequest.get
-    
-    Logger.debug(event.toString())
     val timezone = getTimezone()
-    val timestampstart = event.startTime.minusHours(timezone).toDate()
-    val timestampend = event.endTime.minusHours(timezone).toDate()
-    
-    DB.withConnection { implicit c =>
-      val result = SQL(
-        """
-          UPDATE event SET (title, stream_link, start_time, end_time) = 
-          ({title}, {streamLink}, {startTime}, {endTime}) WHERE id = {id}
-        """
-      ).on("id" -> id, "title" -> event.title, "streamLink" -> event.streamLink, "startTime" -> timestampstart,
-        "endTime" -> timestampend).executeUpdate()
-      deleteGames(id)
-      addGames(id, event.games)
+    val eventFromDB = Event.load(id, timezone)
+    if (eventFromDB == None) {
+      NotFound(<h1>Event id not found</h1>)
+    } else {
+      // This is how to autofill the form defined above
+      form.bindFromRequest.fold(
+        errors => {
+          Logger.debug(errors.toString())
+          BadRequest(views.html.events.edit(errors, id, eventFromDB.get.games, Game.list))
+        },
+        event => {
+          Logger.debug(event.toString())
+          val timestampstart = event.startTime.minusHours(timezone).toDate()
+          val timestampend = event.endTime.minusHours(timezone).toDate()
+          
+          DB.withConnection { implicit c =>
+            val result = SQL(
+              """
+                UPDATE event SET (title, stream_link, start_time, end_time) = 
+                ({title}, {streamLink}, {startTime}, {endTime}) WHERE id = {id}
+              """
+            ).on("id" -> id, "title" -> event.title, "streamLink" -> event.streamLink, "startTime" -> timestampstart,
+              "endTime" -> timestampend).executeUpdate()
+            deleteGames(id)
+            addGames(id, event.games)
+          }
+          Redirect(routes.Events.list)
+        }
+      )
     }
-    Redirect(routes.Events.list)
   }
 
   def delete(id: Int) = Action { implicit request =>

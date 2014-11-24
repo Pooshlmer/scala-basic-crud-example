@@ -1,6 +1,8 @@
 package models
 
 import org.joda.time.DateTime
+import play.api.db.DB
+import play.api.Play.current
 import anorm._
 import anorm.SqlParser._
 import util.AnormExtension._
@@ -13,7 +15,7 @@ case class Event(id: Int, title: String, startTime: DateTime, endTime: DateTime,
 
 object Event {
   // A slightly more complex parser with a parameter. The DateTime field is done using a custom class
-  // AnormExtension, although in Play 2.4 Jodatime is a native parser class
+  // AnormExtension, although in Play 2.4 Joda DateTime is a native parser class
   def parser(timezone: Int) = {
     get[Int]("id") ~
     get[String]("title") ~
@@ -52,5 +54,23 @@ object Event {
           groupedEvent.head._4, groupedEvent.head._5, gameList)
     }
     return eventList
+  }
+  
+  def load(id: Int, timezone: Int): Option[Event] = {
+    DB.withConnection { implicit c =>
+      val event = SQL(
+        """
+          SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id) WHERE id = {id}
+        """
+      ).on("id" -> id).as(Event.fullparser(timezone) *)
+
+      val eventList = convertFullParser(event)
+      if (eventList.isEmpty) {
+        None
+      } else {
+        Some(eventList.head)
+      }
+    }
+
   }
 }
