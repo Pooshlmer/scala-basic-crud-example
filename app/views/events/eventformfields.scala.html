@@ -1,4 +1,4 @@
-@(eventForm: Form[Event], eventGames: List[models.EventGame], games: List[models.Game])
+@(eventForm: Form[Event], eventGames: List[Int], games: List[models.Game])
 
 @import helper._
 @import models.Event
@@ -20,7 +20,7 @@
   <label>
     <input type="checkbox" name="games[]" value="@game.id"
       @eventGames.map { eGame =>
-        @if(game.id == eGame.game_id) { checked="checked"} 
+        @if(game.id == eGame) { checked="checked"} 
       }
     />
     @game.title

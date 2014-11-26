@@ -105,11 +105,11 @@ object Events extends Controller {
   }
   
   def add = Action {
-    Ok(views.html.events.add(form, List(), Game.list))
+    Ok(views.html.events.add(form, Game.list))
   }
   def save = Action{ implicit request =>
     form.bindFromRequest.fold(
-      errors => BadRequest(views.html.events.add(errors, List(), Game.list)),
+      errors => BadRequest(views.html.events.add(errors, Game.list)),
       event => {
         //Logger.debug(event.toString())
         
@@ -165,8 +165,9 @@ object Events extends Controller {
       } else {
         // This fills the form for viewing when editing an event
         val bindedForm = form.fill(eventList.head)
-        Logger.debug(bindedForm.toString())
-        Ok(views.html.events.edit(bindedForm, id, eventList.head.games, Game.list))
+        val gamesList = eventList.head.games.map(x => x.game_id)
+        //Logger.debug(bindedForm.toString())
+        Ok(views.html.events.edit(bindedForm, id, gamesList, Game.list))
       }
     }    
   }  
@@ -179,11 +180,14 @@ object Events extends Controller {
       // This is how to autofill the form defined above
       form.bindFromRequest.fold(
         errors => {
-          Logger.debug(errors.toString())
-          BadRequest(views.html.events.edit(errors, id, eventFromDB.get.games, Game.list))
+          //Logger.debug(errors.toString())
+          // This construct gets all the values passed into the games[] parameter and
+          // converts them to a List[Int] to fill the checkboxes when returning with an error
+          val gamesList = errors.apply("games").indexes.map(i => errors.apply("games[" + i + "]").value.get.toInt).toList
+          BadRequest(views.html.events.edit(errors, id, gamesList, Game.list))
         },
         event => {
-          Logger.debug(event.toString())
+          //Logger.debug(event.toString())
           val timestampstart = event.startTime.minusHours(timezone).toDate()
           val timestampend = event.endTime.minusHours(timezone).toDate()
           
