@@ -1,0 +1,20 @@
+@(loginForm: Form[User])
+
+@import helper._
+@import models.Event
+
+@main("Create a new account") {
+  <h1>Create a new account</h1>
+  @form(routes.Users.createuser) {
+    @inputText(loginForm("email"))
+    @inputPassword(loginForm("password"))
+    @inputText(loginForm("username"))
+    <dl id="timezone_field">
+      <label for="timezone">timezone</label>
+      <dd>
+      @timezoneoptions()
+      </dd>
+    </dl>
+    <button type="submit">Save</button>
+  }
+}

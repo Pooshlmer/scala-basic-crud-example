@@ -1,9 +1,21 @@
-@(events: Iterable[models.Event])
+@(events: Iterable[models.Event])(implicit session: play.api.mvc.Session) 
 
 @main("All events") {
 
-  @timezoneoptions()
-
+  <h2>Time zone</h2>
+  @helper.form(action = routes.Timezone.updateTimezone()) {
+    @timezoneoptions()
+    <button type="submit">Update Time Zone</button>          
+  }
+  <script>
+    var timezoneCookie = document.cookie.replace(/(?:(?:^|.*;\s*)timezone\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+    $('select#timezoneselect').val(timezoneCookie);
+  </script>
+  
+      
+  @if(!session.get("name").isEmpty) {
+    <h2>Hi, @session.get("name")!</h2>
+  }
   <h2>All events</h2>
   @if(events.isEmpty) {
       <p>No events found</p>

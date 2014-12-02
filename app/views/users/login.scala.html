@@ -1,0 +1,18 @@
+@(loginForm: Form[User], urlreturn: String)
+
+@import helper._
+@import models.Event
+
+@main("Login") {
+  <h1>Login</h1>
+  @form(routes.Users.login(urlreturn)) {
+      @if(!loginForm.error("unknown").isEmpty) {
+        <dl>      
+          <dd class="error">@loginForm.error("unknown").get.message</dd>
+        </dl>
+      }
+      @inputText(loginForm("email"))
+      @inputPassword(loginForm("password"))
+      <button type="submit">Save</button>
+  }
+}

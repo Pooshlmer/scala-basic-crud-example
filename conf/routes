@@ -16,6 +16,15 @@ POST /events/:id/delete             controllers.Events.delete(id: Int)
 GET /events/:day                    controllers.Events.day(day: String)
 POST /timezone                      controllers.Timezone.updateTimezone
 
+# Users
+GET /createuser                     controllers.Users.createuserinit
+POST /createuser                    controllers.Users.createuser
+GET /login                          controllers.Users.logininit(urlreturn = "")
+GET /login/:urlreturn               controllers.Users.logininit(urlreturn)
+POST /login/:urlreturn              controllers.Users.login(urlreturn: String)
+GET /logout                         controllers.Users.logout
+
+
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.at(path="/public", file)
