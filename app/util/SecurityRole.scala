@@ -22,7 +22,7 @@ object SecurityRole {
     val sessionUser = req.session.get("email").getOrElse("")
     role match {
       case None => false
-      case Some(x) => validRoles.contains(x) && sessionUser == owner 
+      case Some(x) => validRoles.contains(x) || sessionUser == owner 
     }
   }
 }

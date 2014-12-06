@@ -10,6 +10,7 @@ import play.api.Logger
 import anorm._
 import anorm.SqlParser._
 import models._
+import services.UserService
 
 import org.joda.time.DateTime
 import java.sql.Timestamp
@@ -52,13 +53,7 @@ object Users extends Controller {
     createform.bindFromRequest.fold(
       errors => BadRequest(views.html.users.create(errors)),
       user => {
-        DB.withConnection { implicit c =>
-          val result =
-            SQL"""
-              INSERT INTO accountuser(email, username, password, role, timezone) VALUES
-              (${user.email}, ${user.username}, ${user.password}, 'basic', ${user.timezone})
-            """.executeInsert()
-        }
+        UserService.insertUser(user)
         Redirect(routes.Events.list).withCookies(Cookie("timezone", user.timezone.toString(), Option(86400), "/", None, false, false))
       }
     )
@@ -69,15 +64,11 @@ object Users extends Controller {
   }  
   def login (urlreturn: String) = Action { implicit request =>
     
-    Logger.debug(urlreturn)
     loginform.bindFromRequest.fold(
       errors => BadRequest(views.html.users.login(errors, urlreturn)),
       user => {
         DB.withConnection { implicit c =>
-          val dbUser =  
-            SQL"""
-              SELECT * FROM accountuser WHERE email = ${user.email}
-            """.as(User.parser singleOpt)
+          val dbUser = UserService.selectUser(user.email)
           dbUser match {
             case Some(actualUser) => {
               if (user.password == actualUser.password) {

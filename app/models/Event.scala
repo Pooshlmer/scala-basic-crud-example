@@ -58,22 +58,4 @@ object Event {
     }
     return eventList
   }
-  
-  def load(id: Int, timezone: Int): Option[Event] = {
-    DB.withConnection { implicit c =>
-      val event = SQL(
-        """
-          SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id) WHERE id = {id}
-        """
-      ).on("id" -> id).as(Event.fullparser(timezone) *)
-
-      val eventList = convertFullParser(event)
-      if (eventList.isEmpty) {
-        None
-      } else {
-        Some(eventList.head)
-      }
-    }
-
-  }
 }

@@ -10,12 +10,12 @@ import play.api.Logger
 import anorm._
 import anorm.SqlParser._
 import models._
+import services.EventService
 import util.SecurityAction
 import util.SecurityRole
 
 import org.joda.time.DateTime
 import java.sql.Timestamp
-import scala.collection.mutable.HashMap
 
 // Controller class for Events, supports the basic CRUD operations
 
@@ -67,43 +67,23 @@ object Events extends Controller {
     val dayArray = dayToFind.split('-')
     val dateTime = new DateTime(dayArray(0).toInt, dayArray(1).toInt, dayArray(2).toInt, 0, 0).plusHours(timezone)
     val dateTime2 = dateTime.plusDays(1)
-    val timestamp1 = dateTime.toDate()
-    val timestamp2 = dateTime.toDate()
     
     // You can use $<variable> with the SQL""" syntax to interpolate in the string itself
     // Interpolate expressions with ${expr}
     // The parser uses * to get all rows, it then puts them into a list
     // The as function executes the select with the given parser
     // Here c is used in the SQL call as the connection
-    DB.withConnection { implicit c =>
-      val events =  
-        SQL"""
-          SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id)
-            WHERE deleted = false AND (start_time >= $timestamp1 AND start_time <= $timestamp2) OR
-            (end_time >= $timestamp1 AND end_time <= $timestamp2)
-        """.as(Event.fullparser(timezone) *)
-      
-      val eventList = Event.convertFullParser(events)
-      Ok(views.html.events.day(eventList))
-    }
+    val events = EventService.selectEventsFromPeriod(dateTime, dateTime2, timezone)
+    Ok(views.html.events.day(events))    
   }
   
   def list = Action { implicit request =>
     
     val timezone = getTimezone()
     
-    DB.withConnection { implicit c =>
-      val events = SQL(
-        """
-          SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id) WHERE deleted = false 
-        """
-      ).as(Event.fullparser(timezone) *)
-
-      val eventList = Event.convertFullParser(events)
-      // This function renders a page, they have to be called <name>.scala.html
-      Ok(views.html.events.list(eventList))
-    }
-    
+    val eventList = EventService.selectAllEvents(timezone)
+    // This function renders a page, they have to be called <name>.scala.html
+    Ok(views.html.events.list(eventList))   
   }
   
   // This is a custom action for user authentication, implemented in util.SecurityAction
@@ -118,70 +98,35 @@ object Events extends Controller {
         
         val timezone = getTimezone()
         
-        val timestampstart = event.startTime.minusHours(timezone).toDate()
-        val timestampend = event.endTime.minusHours(timezone).toDate()
-        
-        // You can also use on() if you want to define strings yourself
-        DB.withConnection { implicit c =>
-          val result = SQL(
-            """
-              INSERT INTO event(title, stream_link, start_time, end_time, owner) VALUES 
-              ({title}, {streamLink}, {startTime}, {endTime}, {owner})
-            """
-          ).on("title" -> event.title, "streamLink" -> event.streamLink, "startTime" -> timestampstart,
-            "endTime" -> timestampend, "owner" -> request.session.get("owner").getOrElse("")).executeInsert()
-          val insertId = result.get.toInt
-          addGames(insertId, event.games)
-        }
-        
+        EventService.insertEvent(event, timezone, request.session.get("email").getOrElse(""))
         Redirect(routes.Events.list)
       }
     )
   })
-  
-  // Add or delete the EventGame references when you add or delete an Event
-  private def addGames(eventId: Int, eventGames: List[EventGame])(implicit c: java.sql.Connection) {
-    for (eventGame <- eventGames) {
-      SQL"""INSERT INTO event_game_xref(event_id, game_id, tier)
-        VALUES($eventId, ${eventGame.game_id}, ${eventGame.tier})""".executeInsert()
-    }
-  }
-  private def deleteGames(eventId: Int)(implicit c: java.sql.Connection) {
-    SQL"""DELETE FROM event_game_xref WHERE event_id = $eventId""".execute
-  }
 
   def edit(id: Int) = util.SecurityAction.isAuthenticated(routes.Events.edit(id).toString(), { email => implicit request =>
     
     val timezone = getTimezone()
-     
-    DB.withConnection { implicit c =>
-      val event = SQL(
-        """
-          SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id) WHERE deleted = false AND id = {id}
-        """
-      ).on("id" -> id).as(Event.fullparser(timezone) *)
-
-      val eventList = Event.convertFullParser(event)
-      
-      if (eventList.isEmpty) {
-        NotFound(<h1>Event id not found</h1>)
-      } else {
-        // This fills the form for viewing when editing an event
-        if (SecurityRole.checkPermissions(SecurityRole.CAN_EDIT, eventList.head.owner)) {
-          val bindedForm = form.fill(eventList.head)
-          val gamesList = eventList.head.games.map(x => x.game_id)
-          //Logger.debug(bindedForm.toString())
-          Ok(views.html.events.edit(bindedForm, id, gamesList, Game.list))
-        }
-        else {
-          NotFound(<h1>You do not have permission to edit this event</h1>)
-        }
+    val event = EventService.selectEvent(id, timezone)
+    
+    if (event == None) {
+      NotFound(<h1>Event id not found</h1>)
+    } else {
+      // This fills the form for viewing when editing an event
+      if (SecurityRole.checkPermissions(SecurityRole.CAN_EDIT, event.get.owner)) {
+        val bindedForm = form.fill(event.get)
+        val gamesList = event.get.games.map(x => x.game_id)
+        //Logger.debug(bindedForm.toString())
+        Ok(views.html.events.edit(bindedForm, id, gamesList, Game.list))
       }
-    }    
+      else {
+        NotFound(<h1>You do not have permission to edit this event</h1>)
+      }
+    } 
   })
   def update(id: Int) = util.SecurityAction.isAuthenticated(routes.Events.edit(id).toString(), { email => implicit request =>
     val timezone = getTimezone()
-    val eventFromDB = Event.load(id, timezone)
+    val eventFromDB = EventService.selectEvent(id, timezone)
     if (eventFromDB == None) {
       NotFound(<h1>Event id not found</h1>)
     } else {
@@ -197,20 +142,7 @@ object Events extends Controller {
           },
           event => {
             //Logger.debug(event.toString())
-            val timestampstart = event.startTime.minusHours(timezone).toDate()
-            val timestampend = event.endTime.minusHours(timezone).toDate()
-            
-            DB.withConnection { implicit c =>
-              val result = SQL(
-                """
-                  UPDATE event SET (title, stream_link, start_time, end_time) = 
-                  ({title}, {streamLink}, {startTime}, {endTime}) WHERE id = {id}
-                """
-              ).on("id" -> id, "title" -> event.title, "streamLink" -> event.streamLink, "startTime" -> timestampstart,
-                "endTime" -> timestampend).executeUpdate()
-              deleteGames(id)
-              addGames(id, event.games)
-            }
+            EventService.updateEvent(id, event, timezone)            
             Redirect(routes.Events.list)
           }
         )
@@ -221,20 +153,13 @@ object Events extends Controller {
   })
 
   def delete(id: Int) = util.SecurityAction.isAuthenticated(routes.Events.delete(id).toString(), { email => implicit request =>
-    val eventFromDB = Event.load(id, 0)
+    val eventFromDB = EventService.selectEvent(id, 0)
     if (eventFromDB == None) {
       NotFound(<h1>Event id not found</h1>)
     } else {
       if (SecurityRole.checkPermissions(SecurityRole.CAN_EDIT, eventFromDB.get.owner)) {
     
-        DB.withConnection { implicit c =>
-          val result = SQL(
-            """
-              UPDATE event SET deleted = true WHERE id = {id}
-            """
-          ).on("id" -> id).execute()
-          deleteGames(id)
-        }
+        EventService.deleteEvent(id)
         Redirect(routes.Events.list)
       } else {
         NotFound(<h1>You do not have permission to delete this event</h1>)

@@ -3,6 +3,9 @@
 # /URL/(parameters with ':')            <class method>(parameters)
 # ~~~~
 
+# Redirect to remove slashes
+GET /*path/                         controllers.Application.untrail(path: String)
+
 # Home page
 GET     /                           controllers.Application.index
 
@@ -19,8 +22,9 @@ POST /timezone                      controllers.Timezone.updateTimezone
 # Users
 GET /createuser                     controllers.Users.createuserinit
 POST /createuser                    controllers.Users.createuser
-GET /login                          controllers.Users.logininit(urlreturn = "")
+GET /login                          controllers.Users.logininit(urlreturn = "/events")
 GET /login/:urlreturn               controllers.Users.logininit(urlreturn)
+POST /login                         controllers.Users.login(urlreturn = "/events")
 POST /login/:urlreturn              controllers.Users.login(urlreturn: String)
 GET /logout                         controllers.Users.logout
 
