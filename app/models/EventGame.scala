@@ -12,7 +12,7 @@ case class EventGame(id: Int, event_id: Int, game_id: Int, tier: Int = 0) {
 
 object EventGame {
   
-  val BOTTOMTIER = 5
+  val BOTTOMTIER = 4
   
   // Generic parser for getting row data from an SQL database
   val parser = {

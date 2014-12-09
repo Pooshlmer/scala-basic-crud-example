@@ -17,6 +17,11 @@ import java.sql.Timestamp
 object EventService {
   
   // Select all events in the database
+  // You can use $<variable> with the SQL""" syntax to interpolate in the string itself
+  // Interpolate expressions with ${expr}
+  // The parser uses * to get all rows, it then puts them into a list
+  // The as function executes the select with the given parser
+  // Here c is used in the SQL call as the connection
   def selectAllEvents(timezone: Int) = {
     DB.withConnection { implicit c =>
       val events = SQL(
@@ -60,16 +65,20 @@ object EventService {
     SQL"""DELETE FROM event_game_xref WHERE event_id = $eventId""".execute
   }
 
+  // Get events running within a certain time period
   def selectEventsFromPeriod(startTime: DateTime, endTime: DateTime, timezone: Int) = {
-    DB.withConnection { implicit c =>
-      val events =  
-        SQL"""
-        SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id)
-        WHERE deleted = false AND (start_time >= ${startTime.toDate()} AND start_time <= ${endTime.toDate()}) OR
-        (end_time >= ${startTime.toDate()} AND end_time <= ${endTime.toDate()})
-        """.as(Event.fullparser(timezone) *)
-        
-        Event.convertFullParser(events)
+    if (endTime.isBefore(startTime)) List()
+    else {
+      DB.withConnection { implicit c =>
+        val events =  
+          SQL"""
+          SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id)
+          WHERE deleted = false AND (start_time >= ${startTime.toDate()} AND start_time <= ${endTime.toDate()}) OR
+          (end_time >= ${startTime.toDate()} AND end_time <= ${endTime.toDate()})
+          """.as(Event.fullparser(timezone) *)
+          
+          Event.convertFullParser(events)
+      }
     }
   }
   

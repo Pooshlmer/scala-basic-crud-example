@@ -68,11 +68,6 @@ object Events extends Controller {
     val dateTime = new DateTime(dayArray(0).toInt, dayArray(1).toInt, dayArray(2).toInt, 0, 0).plusHours(timezone)
     val dateTime2 = dateTime.plusDays(1)
     
-    // You can use $<variable> with the SQL""" syntax to interpolate in the string itself
-    // Interpolate expressions with ${expr}
-    // The parser uses * to get all rows, it then puts them into a list
-    // The as function executes the select with the given parser
-    // Here c is used in the SQL call as the connection
     val events = EventService.selectEventsFromPeriod(dateTime, dateTime2, timezone)
     Ok(views.html.events.day(events))    
   }
