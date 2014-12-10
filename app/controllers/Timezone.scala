@@ -8,6 +8,7 @@ import play.api.Play.current
 import anorm._
 
 import models.User
+import services.UserService
 
 import scala.collection.mutable.HashMap
 
@@ -24,7 +25,7 @@ object Timezone extends Controller {
   def updateTimezone = Action { implicit request =>
     val timezone = timezoneform.bindFromRequest.get
     if (!request.session.get("email").isEmpty) {
-      User.updateTimezone(request.session.get("email").get, timezone)
+      UserService.updateTimezone(request.session.get("email").get, timezone)
     }
     Redirect(routes.Events.list).withCookies(Cookie("timezone", timezone.toString(), Option(86400), "/", None, false, false))
   }

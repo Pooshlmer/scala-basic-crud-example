@@ -23,31 +23,6 @@ object User {
     get[Int]("timezone") map {
       case id ~ email ~ username ~ password ~ role ~ timezone => User(id, email, username, password, role, timezone)
     }
-  }
-  
-  def list: List[User] = {
-    DB.withConnection { implicit connection =>
-      SQL("SELECT * FROM accountuser").as(parser *)
-    }
-  }
-  
-  def load(id: Int): Option[User] = {
-    DB.withConnection { implicit c =>
-      SQL"""SELECT * FROM accountuser WHERE id = $id""".as(parser.singleOpt)
-    }
-  }
-  
-  def load(email: String): Option[User] = {
-    DB.withConnection { implicit c =>
-      SQL"""SELECT * FROM accountuser WHERE email = $email""".as(parser.singleOpt)
-    }
-  }
-  
-  def updateTimezone(email: String, timezone: Int) = {
-    DB.withConnection { implicit c =>
-      SQL"""
-        UPDATE accountuser SET timezone = $timezone WHERE email = $email
-      """.executeInsert()
-    }
-  }
+  }  
+
 }

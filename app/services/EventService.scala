@@ -88,8 +88,8 @@ object EventService {
     val timestampstart = event.startTime.minusHours(timezone).toDate()
     val timestampend = event.endTime.minusHours(timezone).toDate()
     // You can also use on() if you want to define strings yourself
-    Logger.debug("inserting event: " + event.toString())
-    Logger.debug("with owner: " + owner)
+    //Logger.debug("inserting event: " + event.toString())
+    //Logger.debug("with owner: " + owner)
     DB.withConnection { implicit c =>
       val result = SQL(
         """

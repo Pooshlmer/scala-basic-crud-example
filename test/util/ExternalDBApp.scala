@@ -8,6 +8,8 @@ import play.api.db.DB
 import play.api.test._
 import play.api.test.Helpers._
 
+// This is one way to specify a test database
+// The around function runs every time you use this
 abstract class ExternalDBApp (override val app: FakeApplication = 
   FakeApplication(additionalConfiguration = Map(
      "db.default.driver" -> "org.postgresql.Driver",

@@ -11,11 +11,6 @@ import models.Event
 import models.EventGame
 import util.ExternalDBApp
 
-/**
- * Add your spec here.
- * You can mock out a whole application including requests, plugins etc.
- * For more information, consult the wiki.
- */
 @RunWith(classOf[JUnitRunner])
 class EventServiceTest extends Specification {
 
@@ -25,7 +20,7 @@ class EventServiceTest extends Specification {
   
   "EventService" should {
     
-    "select from empty database" in new ExternalDBApp {
+    "select from database" in new ExternalDBApp {
       EventService.selectAllEvents(0).size must equalTo(0)
     }
     
@@ -54,6 +49,8 @@ class EventServiceTest extends Specification {
       EventService.selectEventsFromPeriod(DateTime.now().plusHours(3), DateTime.now().plusHours(5), 0).length must equalTo(0)
       EventService.selectEventsFromPeriod(DateTime.now().minusHours(3), DateTime.now().plusHours(5), 0).length must equalTo(1)
     }
+    
+    //TODO Add timezone testing
     
     "update database" in new ExternalDBApp {
       val egames = List(EventGame(0, 0, 1, 4))
