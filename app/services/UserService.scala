@@ -34,7 +34,7 @@ object UserService {
       val result =
         SQL"""
         INSERT INTO accountuser(email, username, password, role, timezone) VALUES
-        (${user.email}, ${user.username}, ${user.password}, 'basic', ${user.timezone})
+        (${user.email}, ${user.username}, ${user.password}, ${User.ROLE_USER}, ${user.timezone})
         """.executeInsert()
       result
     }

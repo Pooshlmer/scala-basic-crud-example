@@ -10,11 +10,21 @@ import models.EventGame
 
 import org.joda.time.DateTime
 import java.sql.Timestamp
+import java.sql.SQLException
+
+trait EventServiceTrait {
+  def selectAllEvents(timezone: Int): List[Event]
+  def selectEvent(id: Int, timezone: Int): Option[Event]
+  def selectEventsFromPeriod(startTime: DateTime, endTime: DateTime, timezone: Int): List[Event]
+  def insertEvent(event: Event, timezone: Int, owner: String): Int
+  def updateEvent(id: Int, event: Event, timezone: Int): Unit
+  def deleteEvent(id: Int): Unit
+}
 
 // Database functions for Events, mostly used so we can mock these functions in tests
 // All events are modifed by timezone to return them in the user's local time, they are
 // stored GMT(+0:00)
-object EventService {
+object EventService extends EventServiceTrait {
   
   // Select all events in the database
   // You can use $<variable> with the SQL""" syntax to interpolate in the string itself
@@ -73,8 +83,8 @@ object EventService {
         val events =  
           SQL"""
           SELECT * FROM event e JOIN event_game_xref eg ON (e.id = eg.event_id)
-          WHERE deleted = false AND (start_time >= ${startTime.toDate()} AND start_time <= ${endTime.toDate()}) OR
-          (end_time >= ${startTime.toDate()} AND end_time <= ${endTime.toDate()})
+          WHERE e.deleted = false AND ((e.start_time >= ${startTime.toDate()} AND e.start_time <= ${endTime.toDate()}) OR
+          (e.end_time >= ${startTime.toDate()} AND e.end_time <= ${endTime.toDate()}))
           """.as(Event.fullparser(timezone) *)
           
           Event.convertFullParser(events)
@@ -100,7 +110,7 @@ object EventService {
             "endTime" -> timestampend, "owner" -> owner).executeInsert()
       val insertId = result.get.toInt
       addGames(insertId, event.games)
-      result
+      insertId
     }
   }
   
@@ -116,6 +126,9 @@ object EventService {
         """
       ).on("id" -> id, "title" -> event.title, "streamLink" -> event.streamLink, "startTime" -> timestampstart,
         "endTime" -> timestampend).executeUpdate()
+      if (result == 0) {
+        throw new SQLException("Updated 0 event rows")
+      }
       deleteGames(id)
       addGames(id, event.games)
     }

@@ -1,0 +1,12 @@
+@(event: Event)
+
+@import helper._
+@import models.Event
+
+<li>@event.title</li>
+<li>@event.streamLink</li>
+<li>@event.startTime.toDate().format("yyyy-MM-dd HH:mm")</li>
+<li>@event.endTime.toDate().format("yyyy-MM-dd HH:mm")</li>
+@for(eventGame <- event.games) {
+  <li>@eventGame.game_id @eventGame.tier</li>
+}

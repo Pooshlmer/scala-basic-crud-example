@@ -22,13 +22,7 @@
   } else {
       <ul>
       @for(event <- events) {
-        <li>@event.title</li>
-        <li>@event.streamLink</li>
-        <li>@event.startTime.toDate().format("yyyy-MM-dd HH:mm")</li>
-        <li>@event.endTime.toDate().format("yyyy-MM-dd HH:mm")</li>
-        @for(eventGame <- event.games) {
-          <li>@eventGame.game_id @eventGame.tier</li>
-        }
+        @eventlist(event)
         
         <a href="@routes.Events.edit(event.id)">Edit</a>
         @helper.form(action = routes.Events.delete(event.id)){<button type="submit">Delete</button>}</li>

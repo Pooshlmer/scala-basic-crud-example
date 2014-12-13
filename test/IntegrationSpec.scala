@@ -6,19 +6,21 @@ import play.api.test._
 import play.api.test.Helpers._
 
 /**
- * add your integration spec here.
- * An integration test will fire up a whole play application in a real (or headless) browser
+ * This is not working at the moment, something to do with
+ * drivers. When I try HTMLUNIT it gives me Javascript errors
  */
 @RunWith(classOf[JUnitRunner])
 class IntegrationSpec extends Specification {
-
+  
   "Application" should {
+/*
+    "work from within a browser" in new WithBrowser(webDriver = WebDriverFactory(FIREFOX), FakeApplication(), 9000) {
 
-    //"work from within a browser" in new WithBrowser(webDriver = WebDriverFactory(FIREFOX)) {
+      browser.goTo("http://localhost:9000")
 
-      //browser.goTo("http://localhost:9000")
-
-      //browser.pageSource must contain("All events")
+      browser.pageSource must contain("All events")
     }
-  //}
+    * 
+    */
+  }
 }

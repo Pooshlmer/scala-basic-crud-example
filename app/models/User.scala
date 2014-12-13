@@ -12,6 +12,9 @@ case class User(id: Int, email: String, username: String, password: String, role
 }
 
 object User {
+
+  val ROLE_ADMIN = "admin"
+  val ROLE_USER = "basic"
   
   // Generic parser for getting row data from an SQL database
   val parser = {

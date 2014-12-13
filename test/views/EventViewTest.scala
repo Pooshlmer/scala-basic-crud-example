@@ -12,6 +12,7 @@ import models.Event
 import models.Game
 import controllers.Events
 import models.EventGame
+import services.EventService
 import util.ExternalDBApp
 
 @RunWith(classOf[JUnitRunner])
@@ -24,7 +25,7 @@ class EventViewTest extends Specification {
   
   "Event Views" should {
     
-    "render list template" in new WithApplication { 
+    "render list template" in { 
 
       val session = new Session(Map())
       val html = views.html.events.list(List(testEvent))(session)
@@ -34,15 +35,25 @@ class EventViewTest extends Specification {
       contentAsString(html) must contain ("1 4")
     }
     
-    "render edit template" in new WithApplication {
+    "render day template" in { 
+
+      val session = new Session(Map())
+      val html = views.html.events.day(List(testEvent))
       
-      val html = views.html.events.edit(Events.form(FakeRequest()).fill(testEvent), 0, List(1), gameList)
+      contentAsString(html) must contain ("title")
+      contentAsString(html) must contain ("streamLink")
+      contentAsString(html) must contain ("1 4")
+    }
+    
+    "render edit template" in {
+      val eController = new Events(EventService)
+      val html = views.html.events.edit(eController.form(FakeRequest()).fill(testEvent), 0, List(1), gameList)
       
       contentAsString(html) must contain ("title")
       contentAsString(html) must contain ("streamLink")
     }
     
-    "render daily template" in new WithApplication {
+    "render daily template" in {
       
       val session = new Session(Map())
       val html = views.html.events.list(List(testEvent))(session)

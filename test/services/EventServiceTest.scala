@@ -5,6 +5,7 @@ import org.specs2.runner._
 import org.junit.runner._
 import play.api.test._
 import play.api.test.Helpers._
+import play.api.Logger
 import org.joda.time.DateTime
 
 import models.Event
@@ -27,8 +28,7 @@ class EventServiceTest extends Specification {
     "insert into database" in new ExternalDBApp{
       val egames = List(EventGame(0, 0, 1, 4))
       val testEvent = Event(0, "title", DateTime.now(), DateTime.now().plusHours(1), "streamLink", egames, "owner")
-      val insertLong = EventService.insertEvent(testEvent, 0, "owner").getOrElse(-1L)
-      insertId = insertLong.toInt
+      insertId = EventService.insertEvent(testEvent, 0, "owner")
       insertId must be_>=(0)
       val eventList = EventService.selectAllEvents(0)
       eventList.size must equalTo(1)

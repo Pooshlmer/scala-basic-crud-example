@@ -5,13 +5,13 @@
   @if(events.isEmpty) {
       <p>No events found</p>
   } else {
-      <ul>
-      @for(event <- events) {
-              <li>@event.title</li>
-              <a href="@routes.Events.edit(event.id)">Edit</a>
-              @helper.form(action = routes.Events.delete(event.id)){<button type="submit">Delete</button>}</li>
-              
-      }
-      </ul>
+    <ul>
+    @for(event <- events) {
+      @eventlist(event)
+      <a href="@routes.Events.edit(event.id)">Edit</a>
+      @helper.form(action = routes.Events.delete(event.id)){<button type="submit">Delete</button>}</li>
+            
+    }
+    </ul>
   }
 }

@@ -10,7 +10,7 @@ import play.api.Logger
 import anorm._
 import anorm.SqlParser._
 import models._
-import services.EventService
+import services._
 import util.SecurityAction
 import util.SecurityRole
 
@@ -18,8 +18,15 @@ import org.joda.time.DateTime
 import java.sql.Timestamp
 
 // Controller class for Events, supports the basic CRUD operations
+object Events extends Events(EventService) {
+  
+}
 
-object Events extends Controller {
+// The service passed in here compartmentalizes database calls
+// This is used for testing so you can replace the functions
+// in the service using Mockito or another test framework
+// when testing the controller
+class Events(evService: EventServiceTrait) extends Controller{
   
   val gamesConstraint = Constraint[Seq[Int]](Some("games.constraint"), Nil)(games =>
     if (games.isEmpty) {
@@ -28,8 +35,7 @@ object Events extends Controller {
       Valid
     }
   )
-  
-  // You can use ignored for things like id where you don't want user interaction
+   
   // The jodaDate can take a pattern parameter to control how it is displayed/input
   // The parameter is useful for passing requests
   // implicit is kind of like defining a global, if a method
@@ -68,7 +74,7 @@ object Events extends Controller {
     val dateTime = new DateTime(dayArray(0).toInt, dayArray(1).toInt, dayArray(2).toInt, 0, 0).plusHours(timezone)
     val dateTime2 = dateTime.plusDays(1)
     
-    val events = EventService.selectEventsFromPeriod(dateTime, dateTime2, timezone)
+    val events = evService.selectEventsFromPeriod(dateTime, dateTime2, timezone)
     Ok(views.html.events.day(events))    
   }
   
@@ -76,7 +82,7 @@ object Events extends Controller {
     
     val timezone = getTimezone()
     
-    val eventList = EventService.selectAllEvents(timezone)
+    val eventList = evService.selectAllEvents(timezone)
     // This function renders a page, they have to be called <name>.scala.html
     Ok(views.html.events.list(eventList))   
   }
@@ -87,13 +93,15 @@ object Events extends Controller {
   })
   def save = util.SecurityAction.isAuthenticated(routes.Events.add.toString(), { email => implicit request =>
     form.bindFromRequest.fold(
-      errors => BadRequest(views.html.events.add(errors, Game.list)),
+      errors => {
+        BadRequest(views.html.events.add(errors, Game.list))
+      },
       event => {
         //Logger.debug(event.toString())
         
         val timezone = getTimezone()
         
-        EventService.insertEvent(event, timezone, request.session.get("email").getOrElse(""))
+        evService.insertEvent(event, timezone, request.session.get("email").getOrElse(""))
         Redirect(routes.Events.list)
       }
     )
@@ -102,7 +110,7 @@ object Events extends Controller {
   def edit(id: Int) = util.SecurityAction.isAuthenticated(routes.Events.edit(id).toString(), { email => implicit request =>
     
     val timezone = getTimezone()
-    val event = EventService.selectEvent(id, timezone)
+    val event = evService.selectEvent(id, timezone)
     
     if (event == None) {
       NotFound(<h1>Event id not found</h1>)
@@ -111,7 +119,6 @@ object Events extends Controller {
       if (SecurityRole.checkPermissions(SecurityRole.CAN_EDIT, event.get.owner)) {
         val bindedForm = form.fill(event.get)
         val gamesList = event.get.games.map(x => x.game_id)
-        //Logger.debug(bindedForm.toString())
         Ok(views.html.events.edit(bindedForm, id, gamesList, Game.list))
       }
       else {
@@ -121,7 +128,7 @@ object Events extends Controller {
   })
   def update(id: Int) = util.SecurityAction.isAuthenticated(routes.Events.edit(id).toString(), { email => implicit request =>
     val timezone = getTimezone()
-    val eventFromDB = EventService.selectEvent(id, timezone)
+    val eventFromDB = evService.selectEvent(id, timezone)
     if (eventFromDB == None) {
       NotFound(<h1>Event id not found</h1>)
     } else {
@@ -136,8 +143,7 @@ object Events extends Controller {
             BadRequest(views.html.events.edit(errors, id, gamesList, Game.list))
           },
           event => {
-            //Logger.debug(event.toString())
-            EventService.updateEvent(id, event, timezone)            
+            evService.updateEvent(id, event, timezone)            
             Redirect(routes.Events.list)
           }
         )
@@ -148,13 +154,13 @@ object Events extends Controller {
   })
 
   def delete(id: Int) = util.SecurityAction.isAuthenticated(routes.Events.delete(id).toString(), { email => implicit request =>
-    val eventFromDB = EventService.selectEvent(id, 0)
+    val eventFromDB = evService.selectEvent(id, 0)
     if (eventFromDB == None) {
       NotFound(<h1>Event id not found</h1>)
     } else {
       if (SecurityRole.checkPermissions(SecurityRole.CAN_EDIT, eventFromDB.get.owner)) {
     
-        EventService.deleteEvent(id)
+        evService.deleteEvent(id)
         Redirect(routes.Events.list)
       } else {
         NotFound(<h1>You do not have permission to delete this event</h1>)
