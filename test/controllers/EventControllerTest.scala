@@ -40,7 +40,7 @@ class EventControllerTest extends Specification with Mockito {
     // You can mock a class and replace its methods with stubs
     // Useful for when you don't want to test the database
     // portion
-    "render day method for empty day" in {
+    "day method for empty day" in {
       val mockEventService = mock[EventServiceTrait]
       mockEventService.selectEventsFromPeriod(any[DateTime], any[DateTime], any[Int]) returns List()
       val eController = new Events(mockEventService)
@@ -49,7 +49,7 @@ class EventControllerTest extends Specification with Mockito {
       status(result) must equalTo(OK)
       contentAsString(result) must contain ("No events found")
     }    
-    "render day method for full day" in {
+    "day method for full day" in {
       val mockEventService = mock[EventServiceTrait]
       mockEventService.selectEventsFromPeriod(any[DateTime], any[DateTime], any[Int]) returns eventList
       val eController = new Events(mockEventService)
@@ -63,7 +63,7 @@ class EventControllerTest extends Specification with Mockito {
       contentAsString(result) must contain ("1 4")
     }
     
-    "render list method for empty list" in {
+    "list method for empty list" in {
       val mockEventService = mock[EventServiceTrait]
       mockEventService.selectAllEvents(any[Int]) returns List()
       val eController = new Events(mockEventService)
@@ -72,7 +72,7 @@ class EventControllerTest extends Specification with Mockito {
       status(result) must equalTo(OK)
       contentAsString(result) must contain ("No events found")
     }    
-    "render list method for full list" in {
+    "list method for full list" in {
       val mockEventService = mock[EventServiceTrait]
       mockEventService.selectAllEvents(any[Int]) returns eventList
       val eController = new Events(mockEventService)
@@ -86,7 +86,7 @@ class EventControllerTest extends Specification with Mockito {
     
     // Should be the same for other authenticated methods,
     // they are all extending the same class
-    "render add method when not authenticated" in {
+    "add method when not authenticated" in {
       val mockEventService = mock[EventServiceTrait]
       val eController = new Events(mockEventService)
       val result = eController.add()(FakeRequest()).run
@@ -98,7 +98,7 @@ class EventControllerTest extends Specification with Mockito {
       nextUrl must equalTo(routes.Users.logininit(routes.Events.add.toString()).toString())    
     }    
     // You need WithApplication when mocking sessions
-    "render add method when authenticated" in new ExternalDBApp {
+    "add method when authenticated" in new ExternalDBApp {
       val mockEventService = mock[EventServiceTrait]
       val eController = new Events(mockEventService)
       val result = eController.add()(FakeRequest().withSession(("email", "asdf"))).run
@@ -112,7 +112,7 @@ class EventControllerTest extends Specification with Mockito {
     // route function which takes that data and feeds it
     // into the request. You can emulate it by using
     // Helpers.call
-    "render save method" in new ExternalDBApp {
+    "save method" in new ExternalDBApp {
       
       val mockEventService = mock[EventServiceTrait]
       mockEventService.insertEvent(any[Event], any[Int], any[String]) returns 0
@@ -130,7 +130,7 @@ class EventControllerTest extends Specification with Mockito {
       }
       nextUrl must equalTo(routes.Events.list.toString())      
     }
-    "render save method with invalid form" in new ExternalDBApp {
+    "save method with invalid form" in new ExternalDBApp {
       
       val mockEventService = mock[EventServiceTrait]
       val eController = new Events(mockEventService)
@@ -145,7 +145,7 @@ class EventControllerTest extends Specification with Mockito {
       contentAsString(result) must contain ("Add a new Event")
     }
     
-    "render edit method without proper permissions" in new ExternalDBApp {
+    "edit method without proper permissions" in new ExternalDBApp {
       val mockEventService = mock[EventServiceTrait]
       val eController = new Events(mockEventService)
       mockEventService.selectEvent(any[Int], any[Int]) returns Some(eventList.head)
@@ -153,7 +153,7 @@ class EventControllerTest extends Specification with Mockito {
       
       status(result) must equalTo(NOT_FOUND)
     }    
-    "render edit method" in new ExternalDBApp {
+    "edit method" in new ExternalDBApp {
       val mockEventService = mock[EventServiceTrait]
       val eController = new Events(mockEventService)
       mockEventService.selectEvent(any[Int], any[Int]) returns Some(eventList.head)
@@ -162,7 +162,7 @@ class EventControllerTest extends Specification with Mockito {
       status(result) must equalTo(OK)
       contentAsString(result) must contain ("Edit Event")
     }
-    "render update method" in new ExternalDBApp {
+    "update method" in new ExternalDBApp {
       val mockEventService = mock[EventServiceTrait]
       mockEventService.selectEvent(any[Int], any[Int]) returns Some(eventList.head)
       val eController = new Events(mockEventService)
@@ -180,7 +180,7 @@ class EventControllerTest extends Specification with Mockito {
       }
       nextUrl must equalTo(routes.Events.list.toString())      
     }
-    "render update method without proper permissions" in new ExternalDBApp {
+    "update method without proper permissions" in new ExternalDBApp {
       val mockEventService = mock[EventServiceTrait]
       val eController = new Events(mockEventService)
       mockEventService.selectEvent(any[Int], any[Int]) returns Some(eventList.head)
@@ -188,7 +188,7 @@ class EventControllerTest extends Specification with Mockito {
       
       status(result) must equalTo(NOT_FOUND)
     }
-    "render update method with invalid form" in new ExternalDBApp {
+    "update method with invalid form" in new ExternalDBApp {
       
       val mockEventService = mock[EventServiceTrait]
       mockEventService.selectEvent(any[Int], any[Int]) returns Some(eventList.head)
@@ -204,7 +204,7 @@ class EventControllerTest extends Specification with Mockito {
       contentAsString(result) must contain ("Edit Event")
     }
     
-    "render delete method without proper permissions" in new ExternalDBApp {
+    "delete method without proper permissions" in new ExternalDBApp {
       val mockEventService = mock[EventServiceTrait]
       val eController = new Events(mockEventService)
       mockEventService.selectEvent(any[Int], any[Int]) returns Some(eventList.head)
@@ -212,7 +212,7 @@ class EventControllerTest extends Specification with Mockito {
       
       status(result) must equalTo(NOT_FOUND)
     }    
-    "render delete method" in new ExternalDBApp {
+    "delete method" in new ExternalDBApp {
       val mockEventService = mock[EventServiceTrait]
       val eController = new Events(mockEventService)
       mockEventService.selectEvent(any[Int], any[Int]) returns Some(eventList.head)

@@ -7,7 +7,17 @@ import anorm._
 import anorm.SqlParser._
 import models.User
 
-object UserService {
+trait UserServiceTrait {
+  def selectAllUsers() : List[User]
+  def selectUser(email: String): Option[User]
+  def insertUser(user: User): Int
+  def updateUser(id: Int, user: User): Unit
+  def deleteUser(id: Int): Unit
+  def deleteUser(email: String): Unit
+  def updateTimezone(email: String, timezone: Int): Unit
+}
+
+object UserService extends UserServiceTrait {
   
   def selectAllUsers() = {
     DB.withConnection { implicit c =>
@@ -36,7 +46,7 @@ object UserService {
         INSERT INTO accountuser(email, username, password, role, timezone) VALUES
         (${user.email}, ${user.username}, ${user.password}, ${User.ROLE_USER}, ${user.timezone})
         """.executeInsert()
-      result
+      result.get.toInt
     }
   }
   

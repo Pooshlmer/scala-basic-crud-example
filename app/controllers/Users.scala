@@ -9,8 +9,8 @@ import play.api.Play.current
 import play.api.Logger
 import anorm._
 import anorm.SqlParser._
-import models._
-import services.UserService
+import models.User
+import services.{UserService, UserServiceTrait}
 
 import org.joda.time.DateTime
 import java.sql.Timestamp
@@ -19,7 +19,11 @@ import scala.collection.mutable.HashMap
 
 // Controller class for Users, implements login and create
 
-object Users extends Controller {
+object Users extends Users(UserService) {
+  
+}
+
+class Users(uService: UserServiceTrait) extends Controller {
   
   val loginform = Form(
     mapping(
@@ -53,7 +57,7 @@ object Users extends Controller {
     createform.bindFromRequest.fold(
       errors => BadRequest(views.html.users.create(errors)),
       user => {
-        UserService.insertUser(user)
+        uService.insertUser(user)
         Redirect(routes.Events.list).withCookies(Cookie("timezone", user.timezone.toString(), Option(86400), "/", None, false, false))
       }
     )
@@ -68,7 +72,7 @@ object Users extends Controller {
       errors => BadRequest(views.html.users.login(errors, urlreturn)),
       user => {
         DB.withConnection { implicit c =>
-          val dbUser = UserService.selectUser(user.email)
+          val dbUser = uService.selectUser(user.email)
           dbUser match {
             case Some(actualUser) => {
               if (user.password == actualUser.password) {

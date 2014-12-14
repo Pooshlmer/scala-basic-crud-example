@@ -21,8 +21,7 @@ class UserServiceTest extends Specification {
     
     "insert into database" in new ExternalDBApp{
       val testuser = User(0, "testemail@test.com", "testuser", "testpass", "user", 0)
-      val insertLong = UserService.insertUser(testuser).getOrElse(-1L)
-      insertId = insertLong.toInt
+      insertId = UserService.insertUser(testuser)
       insertId must be_>=(0)
       val userList = UserService.selectAllUsers()
       userList.size must equalTo(2)
