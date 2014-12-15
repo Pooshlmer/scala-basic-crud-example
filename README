@@ -1,0 +1,20 @@
+TODO:
+Add a real front end
+Deal with daylight savings time
+Password salting
+Better access control system
+
+This is a generic CRUD application that uses a PostgreSQL database.
+I tried documenting through the comments what I had to go through
+while learning, so hopefully it will be useful to people. A lot of
+the documentation on the website is outdated or just difficult to
+grasp if you aren't that familiar with Scala.
+
+If you want to run this, first install the play framework (I used
+the latest typesafe activator) and then run calendar.sql in two
+databases named calendar and calendar-test. If you want to change
+the names/database, you will have to edit conf/application.conf and
+test/util/ExternalDBApp.scala. There's only 4 small tables currently
+so you can look over the sql file if necessary.
+
+Feel free to contact me with any questions/suggestions/corrections/etc.
