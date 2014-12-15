@@ -15,10 +15,7 @@ import models.User
 import services.{UserService, UserServiceTrait}
 import util.ExternalDBApp
 
-// Testing controllers.Events
-// Mockito is used here to replace the EventService database
-// calls with dummy data, since all we care about in this
-// test is what happens with the data
+// Testing controllers.Users
 @RunWith(classOf[JUnitRunner])
 class UserControllerTest extends Specification with Mockito {
 
@@ -94,6 +91,8 @@ class UserControllerTest extends Specification with Mockito {
         (formdata).toSeq:_*
         )
       val result = call(uController.login("/events"), req)
+      
+      cookies(result).get("timezone") must not equalTo(None)
       
       val nextUrl = redirectLocation(result) match {
         case Some(s: String) => s
